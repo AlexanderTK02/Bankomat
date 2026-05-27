@@ -49,3 +49,17 @@ Systemet låter användare skapade genom seed.php att logga in med kortnummer oc
 - Kör 'schema.sql' för att skapa tabeller
 - Kör 'seed.php' för att fylla databas med testdata
 - Kör 'reset.sql' för att tömma databasen och börja om (OBS du kommer behöva köra 'schema.sql' igen)
+
+## Testinloggning
+
+#### Alexander Admin
+    Kortnummer: 123456789
+
+#### Kalle Karlsson
+    Kortnummer: 987654321
+
+#### Lisa Larsson
+    Kortnummer: 555555555
+
+#### Oskar Olsson
+    Kortnummer: 111222333

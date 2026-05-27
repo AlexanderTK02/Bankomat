@@ -19,7 +19,7 @@ if (!isset($transactions) || !is_array($transactions)) $transactions = [];
 
 <?php foreach ($accounts as $acc): ?>
     <p>
-        <?= htmlspecialchars($acc["account_type"]) ?>:
+        <?= htmlspecialchars($acc["account_type"] ?? "konto") ?>:
         <?= htmlspecialchars($acc["balance"]) ?> kr
     </p>
 <?php endforeach; ?>

@@ -1,3 +1,10 @@
+CREATE DATABASE IF NOT EXISTS bankomat
+    CHARACTER SET utf8mb4
+    COLLATE uft8mb4_general_ci;
+
+USE bankomat;
+
+
 -- ============================
 --  USERS
 -- ============================
