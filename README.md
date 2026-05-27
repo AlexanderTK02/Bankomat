@@ -63,3 +63,5 @@ Systemet låter användare skapade genom seed.php att logga in med kortnummer oc
 
 #### Oskar Olsson
     Kortnummer: 111222333
+
+#### Allmän PIN-kod: 1234
