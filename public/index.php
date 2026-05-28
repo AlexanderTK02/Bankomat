@@ -1,26 +1,36 @@
 <?php
 
+// Startar/återupptar session
 session_start();
 
+// Skapar en CSRF-token för att skydda POST-formulär
 if (!isset($_SESSION["csrf_token"])) {
     $_SESSION["csrf_token"] = bin2hex(random_bytes(32));
 }
 
+// Laddar databasanslutningen (PDO)
 require __DIR__ . "/../src/db.php";
+// Laddar hjälpfunktioner (Check_csrf, require_role)
 require __DIR__ . "/../src/helpers.php";
 
+// Laddar alla repo-klasser för att användas
 require __DIR__ . "/../src/UserRepository.php";
 require __DIR__ . "/../src/AccountRepository.php";
 require __DIR__ . "/../src/TransactionRepository.php";
 
+// Skapar objekt för att kommunicera med databasen
 $userRepo = new UserRepository($pdo);
 $accountRepo = new AccountRepository($pdo);
 $transactionRepo = new TransactionRepository($pdo);
 
 $page = $_GET["page"] ?? "login";
 
+// ================================================================
+// LOGIN (POST)
+// ================================================================
 if ($page === "login" && $_SERVER["REQUEST_METHOD"] === "POST") {
 
+    // CSRF-skydd (token)
     if (
         !isset($_POST["csrf_token"]) ||
         $_POST["csrf_token"] !== $_SESSION["csrf_token"]
@@ -28,19 +38,24 @@ if ($page === "login" && $_SERVER["REQUEST_METHOD"] === "POST") {
         die("CSRF_token ogiltig");
     }
 
+    // Input
     $cardNumber = trim($_POST["card_number"] ?? "");
     $pin = trim($_POST["pin"] ?? "");
 
     $user = $userRepo->findByCardNumber($cardNumber);
 
+    // Autentisering - PIN - password_verify (bcrypt)
     if ($user && password_verify($pin, $user["pin_hash"])) {
 
+        // Skydd mot hijacking
         session_regenerate_id(true);
 
+        // Sparar info i session
         $_SESSION["user_id"] = $user["id"];
         $_SESSION["name"] = $user["name"];
         $_SESSION["role"] = $user["role"];
 
+        // Skickar användare till dashboard
         header("Location: ?page=dashboard");
         exit;
     }
@@ -48,21 +63,28 @@ if ($page === "login" && $_SERVER["REQUEST_METHOD"] === "POST") {
     echo "Fel kortnummer eller PIN";
 }
 
+// ================================================================
+// DASHBOARD
+// ================================================================
 if ($page === "dashboard") {
 
+    // Användare måste vara inloggad
     if (!isset($_SESSION["user_id"])) {
         header("Location: ?page=login");
         exit;
     }
 
+    // Hämtar konto och transaktioner
     $accounts = $accountRepo->getAccountsByUser($_SESSION["user_id"]);
-
     $transactions = $transactionRepo->getByUser($_SESSION["user_id"]);
 
     require  __DIR__ . "/../templates/dashboard.php";
     exit;
 }
 
+// ================================================================
+// ADMIN (USERS, ACCOUNTS, TRANSACTIONS)
+// ================================================================
 if ($page === "admin_users") {
 
     require_role("admin");
@@ -93,22 +115,29 @@ if ($page === "admin_transactions") {
     exit;
 }
 
-if ($page === "deposit" && $_SERVER["REQUEST_METHOD"] === "GET") {
+// JAG GLÖMDE KOMMENTERA UT DENNA, JAG REFAKTURERA KODEN.
+// ================================================================
+// DEPOSIT (GET)
+// ================================================================
+// if ($page === "deposit" && $_SERVER["REQUEST_METHOD"] === "GET") {
 
-    if (!isset($_SESSION["user_id"])) {
-        header("Location: ?page=login");
-        exit;
-    }
+//     if (!isset($_SESSION["user_id"])) {
+//         header("Location: ?page=login");
+//         exit;
+//     }
 
-    $accounts = $accountRepo->getAccountsByUser($_SESSION["user_id"]);
+//     $accounts = $accountRepo->getAccountsByUser($_SESSION["user_id"]);
 
-    require __DIR__ . "/../templates/deposit.php";
-    exit;
-}
+//     require __DIR__ . "/../templates/deposit.php";
+//     exit;
+// }
 
-
+// ================================================================
+// DEPOSIT (POST)
+// ================================================================
 if ($page === "deposit" && $_SERVER["REQUEST_METHOD"] === "POST") {
 
+    // CSRF-skydd
     check_csrf();
 
     if (!isset($_SESSION["user_id"])) {
@@ -116,14 +145,17 @@ if ($page === "deposit" && $_SERVER["REQUEST_METHOD"] === "POST") {
         exit;
     }
 
+    // Hämtar input
     $amount = (float) ($_POST["amount"] ?? 0);
     $accountId = (int) ($_POST["account_id"] ?? 0);
 
+    // Validering
     if ($amount <= 0) {
         echo "Ogiltigt belopp!";
         exit;
     }
 
+    // Kontroll att kontot tillhör användare
     $account = $accountRepo->getAccountById($accountId);
     if (!$account || $account["user_id"] !== $_SESSION["user_id"]) {
         echo "Ogiltigt konto!";
@@ -140,20 +172,27 @@ if ($page === "deposit" && $_SERVER["REQUEST_METHOD"] === "POST") {
     exit;
 }
 
-if ($page === "withdraw" && $_SERVER["REQUEST_METHOD"] === "GET") {
 
-    if (!isset($_SESSION["user_id"])) {
-        header("Location: ?page=login");
-        exit;
-    }
+// JAG GLÖMDE KOMMENTERA UT DENNA, JAG REFAKTURERA KODEN.
+// ================================================================
+// WITHDRAW (GET) 
+// ================================================================
+// if ($page === "withdraw" && $_SERVER["REQUEST_METHOD"] === "GET") {
 
-    $accounts = $accountRepo->getAccountsByUser($_SESSION["user_id"]);
+//     if (!isset($_SESSION["user_id"])) {
+//         header("Location: ?page=login");
+//         exit;
+//     }
 
-    require __DIR__ . "/../templates/withdraw.php";
-    exit;
-}
+//     $accounts = $accountRepo->getAccountsByUser($_SESSION["user_id"]);
 
+//     require __DIR__ . "/../templates/withdraw.php";
+//     exit;
+// }
 
+// ================================================================
+// WITHDRAW (POST)
+// ================================================================
 if ($page === "withdraw" && $_SERVER["REQUEST_METHOD"] === "POST") {
 
     check_csrf();
@@ -177,7 +216,7 @@ if ($page === "withdraw" && $_SERVER["REQUEST_METHOD"] === "POST") {
         exit;
     }
 
-    // Försök göra uttag via repository
+    // Försöker göra uttag via repository
     $success = $accountRepo->withdraw($accountId, $amount);
 
     if (!$success) {
@@ -192,6 +231,9 @@ if ($page === "withdraw" && $_SERVER["REQUEST_METHOD"] === "POST") {
     exit;
 }
 
+// ================================================================
+// TRANSFER (GET)
+// ================================================================
 if ($page === "transfer" && $_SERVER["REQUEST_METHOD"] === "GET") {
 
     if (!isset($_SESSION["user_id"])) {
@@ -206,6 +248,9 @@ if ($page === "transfer" && $_SERVER["REQUEST_METHOD"] === "GET") {
     exit;
 }
 
+// ================================================================
+// TRANSFER (POST)
+// ================================================================
 if ($page === "transfer" && $_SERVER["REQUEST_METHOD"] === "POST") {
 
     check_csrf();
@@ -244,6 +289,9 @@ if ($page === "transfer" && $_SERVER["REQUEST_METHOD"] === "POST") {
     exit;
 }
 
+// ================================================================
+// LOGOUT
+// ================================================================
 if ($page === "logout") {
 
     session_unset();
@@ -253,5 +301,8 @@ if ($page === "logout") {
     exit;
 }
 
+// ================================================================
+// DEFAULT: VISA LOGIN-SIDAN
+// ================================================================
 require  __DIR__ . "/../templates/login.php";
 exit;
